@@ -43,6 +43,7 @@ protected:
 
 	Image*			m_pImage;
 	CSize			m_sizeBKImage;
+	CSize			m_sizeBKImageDpi;
 	CPoint			m_point;
 	CSize			m_size;
 	UINT			m_uMessageID;
@@ -88,6 +89,9 @@ public:
 
 	void SetAutoClose(BOOL bAutoClose) { m_bAutoClose = bAutoClose; }
 	BOOL IsAutoClose() { return m_bAutoClose; }
+
+	CSize& GetSize() {return m_size;}
+	void SetSize(CSize&sz){ m_size = sz;}
 
 	BOOL UseImageECM() { return m_bImageUseECM; }
 
@@ -198,8 +202,8 @@ public:
 		DUI_CUSTOM_ATTRIBUTE(_T("bkimg"), OnAttributeBkImage)
 		DUI_INT_ATTRIBUTE(_T("bkalpha"), m_bBackAlpha, TRUE)
 		DUI_INT_ATTRIBUTE(_T("translucent"), m_nBackTranslucent, TRUE)
-		DUI_INT_ATTRIBUTE(_T("width"), m_size.cx, FALSE)
-		DUI_INT_ATTRIBUTE(_T("height"), m_size.cy, FALSE)
+		DUI_INT_ATTRIBUTE_DPI(_T("width"), m_size.cx, FALSE)
+		DUI_INT_ATTRIBUTE_DPI(_T("height"), m_size.cy, FALSE)
 		DUI_INT_ATTRIBUTE(_T("framesize"), m_nFrameSize, FALSE)
 		DUI_INT_ATTRIBUTE(_T("width-lt"), m_nFrameWLT, FALSE)
 		DUI_INT_ATTRIBUTE(_T("height-lt"), m_nFrameHLT, FALSE)

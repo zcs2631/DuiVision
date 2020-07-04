@@ -618,7 +618,7 @@ int CControlBase::GetTooltipCtrlID()
 // 鼠标移动事件处理
 BOOL CControlBase::OnMouseMove(UINT nFlags, CPoint point)
 {
-	if(!m_bIsVisible || !m_bRresponse) return false;
+	if(!m_bIsVisible || !m_bRresponse || point.x<0 || point.y<0) return false;
 	
 	// 保存原始的鼠标位置,并进行位置变换
 	CPoint oldPoint = point;
@@ -916,6 +916,22 @@ BOOL CControlBase::OnRButtonDown(UINT nFlags, CPoint point)
 	OnMousePointChange(point);
 
 	m_bMouseDown = false;
+
+	// 查找鼠标是否在某个内部控件位置,如果是的话就更新当前子控件(按照反向顺序查找,因为定义在后面的控件是优先级更高的)
+	// 找到第一个符合条件的就结束查找
+	for (int i = m_vecControl.size()-1; i >= 0; i--)
+	{
+		CControlBase * pControlBase = m_vecControl.at(i);
+		if (pControlBase && pControlBase->PtInRect(point))
+		{
+			if(pControlBase->GetVisible() && !pControlBase->GetDisable() && pControlBase->GetRresponse())
+			{
+				m_pControl = pControlBase;
+				break;
+			}
+		}
+	}
+
 	if(m_pControl != NULL)
 	{
 		if(m_pControl->OnRButtonDown(nFlags, point))
@@ -1109,6 +1125,7 @@ BOOL CControlBase::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	if(m_bDuiMsgKeyDown)
 	{
 		SendMessage(MSG_KEY_DOWN, (WPARAM)nChar, (LPARAM)nFlags);
+		return true;
 	}
 
 	return false;
@@ -1309,6 +1326,15 @@ void CControlBase::OnPositionChange()
 			pControlBase->OnPositionChange();
 		}
 	}
+	// 刷新area的位置
+	for (size_t i = 0; i < m_vecArea.size(); i++)
+	{
+		CControlBase * pControlBase = m_vecArea.at(i);
+		if (pControlBase)
+		{
+			pControlBase->OnPositionChange();
+		}
+	}
 }
 
 // 计算位置信息的具体坐标值
@@ -1316,17 +1342,24 @@ int CControlBase::PositionItem2Value( const DUI_POSITION_ITEM &pos ,int nMin, in
 {
 	int nRet=0;
 	int nWid=nMax-nMin;
-
+	int x= (int)pos.nPos;
 	switch(pos.pit)
 	{
 	case PIT_CENTER: 
 		nRet=(int)pos.nPos * (pos.bMinus?-1:1) + nWid/2 + nMin;
 		break;
 	case PIT_NORMAL: 
+		CDuiWinDwmWrapper::AdapterDpi(x);
 		if(pos.bMinus)
-			nRet=nMax-(int)pos.nPos;
+		{
+			nRet=nMax-x;
+			//nRet=nMax-(int)pos.nPos;
+		}	
 		else
-			nRet=nMin+(int)pos.nPos;
+		{
+			nRet=nMin+x;
+			//nRet=nMin+(int)pos.nPos;
+		}
 		break;
 	case PIT_PERCENT: 
 		nRet=nMin+(int)(pos.nPos*nWid/100);
@@ -1467,11 +1500,13 @@ HRESULT CControlBase::OnAttributePosChange(const CString& strValue, BOOL bLoadin
 			{
 				rectParent = pParent->GetRect();
 			}
+
 			CRect rect;
 			rect.left = PositionItem2Value(pos.Left, rectParent.left, rectParent.right);
 			rect.top = PositionItem2Value(pos.Top, rectParent.top, rectParent.bottom);
 			rect.right = PositionItem2Value(pos.Right, rectParent.left, rectParent.right);
 			rect.bottom = PositionItem2Value(pos.Bottom, rectParent.top, rectParent.bottom);
+			//CDuiWinDwmWrapper().AdapterDpi(rect);
 			SetRect(rect);
 		}else
 		if(2 == pos.nCount)
@@ -1501,6 +1536,8 @@ HRESULT CControlBase::OnAttributePosChange(const CString& strValue, BOOL bLoadin
 			{
 				rect.bottom = PositionItem2Value(pos.Top, rectParent.top, rectParent.bottom);
 			}
+
+			//CDuiWinDwmWrapper().AdapterDpi(rect);
 			SetRect(rect);
 		}
     }else
@@ -1517,6 +1554,7 @@ HRESULT CControlBase::OnAttributeWidth(const CString& strValue, BOOL bLoading)
     if (strValue.IsEmpty()) return E_FAIL;
 
 	m_nWidth = _ttoi(strValue);
+	CDuiWinDwmWrapper::AdapterDpi(m_nWidth);
 	m_rc.right = m_rc.left + m_nWidth;
 	SetRect(m_rc);
 
@@ -1529,6 +1567,7 @@ HRESULT CControlBase::OnAttributeHeight(const CString& strValue, BOOL bLoading)
     if (strValue.IsEmpty()) return E_FAIL;
 
 	m_nHeight = _ttoi(strValue);
+	CDuiWinDwmWrapper::AdapterDpi(m_nHeight);
 	m_rc.bottom = m_rc.top + m_nHeight;
 	SetRect(m_rc);
 
@@ -1836,7 +1875,12 @@ BOOL CControlBase::RemoveControl(CControlBase* pControl)
 				}
 			}
 			m_vecControl.erase(it);
+			if (pControlBase == m_pControl)
+			{
+				m_pControl = NULL;
+			}
 			delete pControlBase;
+			pControlBase = NULL;
 			return TRUE;
 		}
 	}
@@ -2083,7 +2127,7 @@ LRESULT CControlBase::OnMessage(UINT uID, UINT uMsg, WPARAM wParam, LPARAM lPara
 				if(strProcess.Find(_T("{platpath}")) == 0)
 				{
 					strProcess.Delete(0, 10);
-					strProcess = DuiSystem::GetExePath() + strProcess;
+					strProcess = DuiSystem::GetRootPath() + strProcess;
 				}
 				CString strCmdLine = _T("");
 				int nPos = strProcess.Find(_T("|"));
@@ -2225,9 +2269,12 @@ CControlBaseFont::CControlBaseFont(HWND hWnd, CDuiObject* pDuiObject)
 	m_strTitle = _T("");
 	m_strFont = DuiSystem::GetDefaultFont();
 	m_nFontWidth = 12;
+	// 按照当前DPI计算字体的显示大小
+	CDuiWinDwmWrapper::AdapterDpi(m_nFontWidth);
 	m_fontStyle = FontStyleRegular;
 	m_uAlignment = Align_Left;
 	m_uVAlignment = VAlign_Top;
+	m_bEllipsisCharacter = FALSE;
 
 	m_pImage = NULL;
 	m_nImagePicCount = 4;
@@ -2240,9 +2287,12 @@ CControlBaseFont::CControlBaseFont(HWND hWnd, CDuiObject* pDuiObject, UINT uCont
 	m_strTitle = strTitle;
 	m_strFont = DuiSystem::GetDefaultFont(strFont);
 	m_nFontWidth = nFontWidth;
+	// 按照当前DPI计算字体的显示大小
+	CDuiWinDwmWrapper::AdapterDpi(m_nFontWidth);
 	m_fontStyle = fontStyle;
 	m_uAlignment = Align_Left;
 	m_uVAlignment = VAlign_Top;
+	m_bEllipsisCharacter = FALSE;
 
 	m_pImage = NULL;
 	m_nImagePicCount = 4;
@@ -2342,6 +2392,8 @@ void CControlBaseFont::SetFont(CString strFont, int nFontWidth, FontStyle fontSt
 	{
 		m_strFont = DuiSystem::GetDefaultFont(strFont);
 		m_nFontWidth = nFontWidth;
+		// 按照当前DPI计算字体的显示大小
+		CDuiWinDwmWrapper::AdapterDpi(m_nFontWidth);
 		m_fontStyle = fontStyle;
 		UpdateControl(true);
 	}
@@ -2359,6 +2411,8 @@ BOOL CControlBaseFont::SetBitmap(UINT nResourceID, CString strType)
 	if(LoadImageFromIDResource(nResourceID, strType, m_bImageUseECM, m_pImage))
 	{
 		m_sizeImage.SetSize(m_pImage->GetWidth() / m_nImagePicCount, m_pImage->GetHeight());
+		m_sizeImageDpi.SetSize(m_sizeImage.cx, m_sizeImage.cy);
+		CDuiWinDwmWrapper::AdapterDpi(m_sizeImageDpi.cx, m_sizeImageDpi.cy);
 		UpdateControl(true);
 		return true;
 	}
@@ -2377,6 +2431,8 @@ BOOL CControlBaseFont::SetBitmap(CString strImage)
 	if(DuiSystem::Instance()->LoadImageFile(strImage, m_bImageUseECM, m_pImage))
 	{
 		m_sizeImage.SetSize(m_pImage->GetWidth() / m_nImagePicCount, m_pImage->GetHeight());
+		m_sizeImageDpi.SetSize(m_sizeImage.cx, m_sizeImage.cy);
+		CDuiWinDwmWrapper::AdapterDpi(m_sizeImageDpi.cx, m_sizeImageDpi.cy);
 		UpdateControl(true);
 		return true;
 	}
@@ -2466,9 +2522,8 @@ HRESULT CControlBaseFont::OnAttributeFont(const CString& strValue, BOOL bLoading
 	DuiFontInfo fontInfo;
 	BOOL bFindFont = DuiSystem::Instance()->GetFont(strValue, fontInfo);
 	if (!bFindFont) return E_FAIL;
-
 	m_strFont = fontInfo.strFont;
-	m_nFontWidth = fontInfo.nFontWidth;	
+	m_nFontWidth = fontInfo.nFontWidth;
 	m_fontStyle = fontInfo.fontStyle;
 
 	return bLoading?S_FALSE:S_OK;

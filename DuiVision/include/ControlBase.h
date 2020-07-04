@@ -61,6 +61,7 @@ enum TRANSPARENT_TYPE
 
 class CControlBase : public CDuiObject
 {
+	DUIOBJ_DECLARE_CLASS_NAME(CControlBase, _T("control"))
 public:
 	CControlBase(HWND hWnd, CDuiObject* pDuiObject) ;
 	CControlBase(HWND hWnd, CDuiObject* pDuiObject, UINT uControlID, CRect rc, BOOL bIsVisible = TRUE, BOOL bIsDisable = FALSE , BOOL bRresponse = TRUE) ;
@@ -76,7 +77,7 @@ public:
 
 	void TestMainThread();
 	void Draw(CDC &dc, CRect rcUpdate);
-	virtual void DrawControl(CDC &dc, CRect rcUpdate) = 0;
+	virtual void DrawControl(CDC &dc, CRect rcUpdate) {}
 	virtual BOOL DrawSubControls(CDC &dc, CRect rcUpdate);
 	virtual BOOL IsDraw(CPoint point) { return FALSE; }
 	virtual void SetUpdate(BOOL bUpdate, COLORREF clr = 0);
@@ -130,7 +131,7 @@ public:
 	BOOL GetDragEnable() { return m_bDragEnable; }
 	void SetDropFileEnable(BOOL bDropFileEnable) { m_bDropFileEnable = bDropFileEnable; }
 	BOOL GetDropFileEnable() { return m_bDropFileEnable; }
-	void SetShotcutKey(UINT nShortcutKey, UINT nShortcutFlag);
+	void SetShotcutKey(UINT nShortcutKey, UINT nShortcutFlag) { m_nShortcutKey = nShortcutKey; m_nShortcutFlag = nShortcutFlag; }
 
 	virtual	BOOL PtInRect(CPoint point);	// 判断坐标是否在控件范围内
 	UINT GetControlID() { return m_uID; }	// 控件ID就是DUI对象的ID
@@ -346,6 +347,7 @@ enum {
 // 具有文字的控件基类
 class CControlBaseFont : public CControlBase
 {
+	DUIOBJ_DECLARE_CLASS_NAME(CControlBaseFont, _T("controlfont"))
 public:
 	CControlBaseFont(HWND hWnd, CDuiObject* pDuiObject);
 	CControlBaseFont(HWND hWnd, CDuiObject* pDuiObject, UINT uControlID, CRect rc, CString strTitle, BOOL bIsVisible = TRUE, BOOL bIsDisable = FALSE , BOOL bRresponse = TRUE,
@@ -381,9 +383,11 @@ protected:
 	FontStyle				m_fontStyle;		// 字体Style
 	UINT					m_uAlignment;		// 水平对齐方式
 	UINT					m_uVAlignment;		// 垂直对齐方式
+	BOOL					m_bEllipsisCharacter;// 字符串结尾超出范围是否显示省略号
 
 	Image*					m_pImage;			// 图片
 	CSize					m_sizeImage;		// 图片大小
+	CSize					m_sizeImageDpi;		// 图片大小(DPI适配后的大小)
 	int						m_nImagePicCount;	// Image中默认包含的图片个数
 
 	DUI_DECLARE_ATTRIBUTES_BEGIN()
@@ -404,5 +408,6 @@ protected:
 		DUI_CUSTOM_ATTRIBUTE(_T("image"), OnAttributeImage)
 		DUI_CUSTOM_ATTRIBUTE(_T("skin"), OnAttributeSkin)
 		DUI_INT_ATTRIBUTE(_T("img-count"), m_nImagePicCount, FALSE)
+		DUI_BOOL_ATTRIBUTE(_T("ellipsis"), m_bEllipsisCharacter, TRUE)
     DUI_DECLARE_ATTRIBUTES_END()
 };

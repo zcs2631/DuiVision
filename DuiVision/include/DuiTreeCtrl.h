@@ -23,6 +23,7 @@ struct TreeItemInfo
 	int		nImageIndex;	// 图片索引
 	Image * pImage;			// 图片对象
 	CSize	sizeImage;		// 图片大小
+	CSize	sizeImageDpi;	// 图片大小(DPI适配的)
 	int		nImageCount;	// 图片个数
 	Color	clrText;		// 文字颜色
 	CString strLink;		// 链接的文字
@@ -48,9 +49,11 @@ struct TreeNodeInfo
 	int		nImageIndex;	// 图片索引
 	Image * pImage;			// 图片对象
 	CSize	sizeImage;		// 图片大小
+	CSize	sizeImageDpi;	// 图片大小(DPI适配的)
 	int		nRightImageIndex;// 右边图片索引
 	Image * pRightImage;	// 右边图片对象
 	CSize	sizeRightImage;	// 右边图片大小
+	CSize	sizeRightImageDpi;	// 右边图片大小(DPI适配的)
 	BOOL	bRowColor;		// 使用行定义的文字颜色
 	Color	clrText;		// 行文字颜色
 	BOOL	bRowBackColor;		// 使用行定义的背景颜色
@@ -58,6 +61,7 @@ struct TreeNodeInfo
 	int		nHoverItem;		// 当前热点列
 	BOOL	bCollapse;		// 是否折叠
 	BOOL	bHide;			// 是否隐藏
+	DWORD   dwData;     // 关联用户数据
 	vector<TreeItemInfo> vecItemInfo;
 };
 
@@ -73,6 +77,11 @@ public:
 	BOOL LoadNode(HDUITREEITEM hParentNode, DuiXmlNode pXmlElem);
 
 	BOOL InsertColumn(int nColumn, CString strTitle, int nWidth = -1, Color clrText = Color(0, 0, 0, 0));
+	int GetColumnCount() { return (int)m_vecColumnInfo.size(); }
+	int SetColumnWidth(int nColumn, int nWidth, int nWidthNextColumn = -1);
+	void MoveColumnSplit(int nColumn, int nPos);
+	int GetTotalColumnWidth();
+	void CalcColumnsPos();
 	HDUITREEITEM InsertNode(HDUITREEITEM hParentNode, CString strId, CString strTitle, BOOL bCollapse = FALSE,
 		int nImageIndex = -1, Color clrText = Color(0, 0, 0, 0), CString strImage = _T(""),
 		int nRightImageIndex = -1, CString strRightImage = _T(""),
@@ -89,6 +98,7 @@ public:
 	BOOL DeleteNode(HDUITREEITEM hNode);
 	int  GetNodeCount() { return m_vecRowInfo.size(); }
 	int  GetNodeRow(HDUITREEITEM hNode);
+	int  GetNodeRowById(CString strNodeId);
 	int	 GetNodeLastChildRow(HDUITREEITEM hNode);
 	HDUITREEITEM  GetCurrentNode();
 	BOOL HaveChildNode(HDUITREEITEM hNode);
@@ -108,6 +118,8 @@ public:
 	void ExpandNode(HDUITREEITEM hNode, BOOL bExpand);
 	void SetNodeCheck(HDUITREEITEM hNode, int nCheck);
 	int  GetNodeCheck(HDUITREEITEM hNode);
+	void SetNodeData(HDUITREEITEM hNode, DWORD dwData);
+	DWORD GetNodeData(HDUITREEITEM hNode);
 	void ClearNodes();
 	void HideChildNodes(HDUITREEITEM hItem);
 	void RefreshNodeRows();
@@ -132,6 +144,7 @@ protected:
 	virtual BOOL OnControlLButtonDown(UINT nFlags, CPoint point);
 	virtual BOOL OnControlLButtonUp(UINT nFlags, CPoint point);
 	virtual BOOL OnControlLButtonDblClk(UINT nFlags, CPoint point);
+	virtual BOOL OnControlRButtonDown(UINT nFlags, CPoint point);
 	virtual BOOL OnControlScroll(BOOL bVertical, UINT nFlags, CPoint point);
 	virtual BOOL OnControlKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
 
@@ -163,6 +176,7 @@ public:
 
 	int					m_nFirstViewRow;	// 当前显示区的第一行的序号
 	int					m_nVirtualTop;		// 当前滚动条位置对应的虚拟的top位置
+	int					m_nVirtualLeft;		// 当前滚动条位置对应的虚拟的left位置
 	int					m_nVisibleRowCount;	// 当前可显示的行数(非折叠行)
 
 	BOOL				m_bGridTooltip;		// 是否显示单元格的Tooltip
@@ -173,9 +187,9 @@ public:
 	HDUITREEITEM			m_nNodeIndex;		// 句柄递增变量
 
 	DUI_IMAGE_ATTRIBUTE_DEFINE(Seperator);	// 定义行分隔线图片
-	DUI_IMAGE_ATTRIBUTE_DEFINE(CheckBox);	// 定义检查框图片
-	DUI_IMAGE_ATTRIBUTE_DEFINE(Collapse);	// 定义行缩放图片
-	DUI_IMAGE_ATTRIBUTE_DEFINE(Toggle);		// 定义树节点收缩图片
+	DUI_IMAGE_ATTRIBUTE_DEFINE_DPI(CheckBox);	// 定义检查框图片
+	DUI_IMAGE_ATTRIBUTE_DEFINE_DPI(Collapse);	// 定义行缩放图片
+	DUI_IMAGE_ATTRIBUTE_DEFINE_DPI(Toggle);		// 定义树节点收缩图片
 	DUI_DECLARE_ATTRIBUTES_BEGIN()
 		DUI_CUSTOM_ATTRIBUTE(_T("img-sep"), OnAttributeImageSeperator)
 		DUI_CUSTOM_ATTRIBUTE(_T("img-check"), OnAttributeImageCheckBox)
@@ -189,8 +203,8 @@ public:
 		DUI_COLOR_ATTRIBUTE(_T("crsep"), m_clrSeperator, FALSE)
 		DUI_COLOR_ATTRIBUTE(_T("crrowhover"), m_clrRowHover, FALSE)
 		DUI_COLOR_ATTRIBUTE(_T("crrowcurrent"), m_clrRowCurrent, FALSE)
-		DUI_INT_ATTRIBUTE(_T("row-height"), m_nRowHeight, FALSE)
-		DUI_INT_ATTRIBUTE(_T("left-pos"), m_nLeftPos, FALSE)
+		DUI_INT_ATTRIBUTE_DPI(_T("row-height"), m_nRowHeight, FALSE)
+		DUI_INT_ATTRIBUTE_DPI(_T("left-pos"), m_nLeftPos, FALSE)
 		DUI_INT_ATTRIBUTE(_T("wrap"), m_bTextWrap, FALSE)
 		DUI_INT_ATTRIBUTE(_T("down-row"), m_bEnableDownRow, FALSE)
 		DUI_INT_ATTRIBUTE(_T("bk-transparent"), m_nBkTransparent, FALSE)

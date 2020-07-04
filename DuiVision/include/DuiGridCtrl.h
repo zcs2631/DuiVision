@@ -25,6 +25,7 @@ struct GridItemInfo
 	int		nImageIndex;	// 图片索引
 	Image * pImage;			// 图片对象
 	CSize	sizeImage;		// 图片大小
+	CSize	sizeImageDpi;	// 图片大小(DPI适配的)
 	Color	clrText;		// 文字颜色
 	CString strLink;		// 链接的文字
 	CString strLinkAction;	// 链接的动作
@@ -44,14 +45,17 @@ struct GridRowInfo
 	int		nImageIndex;	// 图片索引
 	Image * pImage;			// 图片对象
 	CSize	sizeImage;		// 图片大小
+	CSize	sizeImageDpi;	// 图片大小(DPI适配的)
 	int		nRightImageIndex;// 右边图片索引
 	Image * pRightImage;	// 右边图片对象
 	CSize	sizeRightImage;	// 右边图片大小
+	CSize	sizeRightImageDpi;	// 右边图片大小(DPI适配的)
 	BOOL	bRowColor;		// 使用行定义的文字颜色
 	Color	clrText;		// 行文字颜色
 	BOOL	bRowBackColor;	// 使用行定义的背景颜色
 	Color	clrBack;		// 行背景颜色
 	int		nHoverItem;		// 当前热点列
+	DWORD   dwData;         // 关联用户数据
 	vector<GridItemInfo> vecItemInfo;
 };
 
@@ -72,6 +76,7 @@ public:
 		UINT uAlignment = 0xFFFFUL, UINT uVAlignment = 0xFFFFUL);
 	int GetColumnCount() { return (int)m_vecColumnInfo.size(); }
 	int SetColumnWidth(int nColumn, int nWidth, int nWidthNextColumn = -1);
+	int GetColumnWidth(UINT nColumn);
 	void MoveColumnSplit(int nColumn, int nPos);
 	int GetTotalColumnWidth();
 	int InsertRow(int nRow, CString strId,
@@ -92,6 +97,7 @@ public:
 	BOOL EnsureVisible(int nRow, BOOL bPartialOK);
 	int  GetRowCount() { return m_vecRowInfo.size(); }
 	int  GetCurrentRow() { return m_nDownRow; }
+	int  GetRowById(CString strRowId);
 	GridRowInfo* GetRowInfo(int nRow);
 	GridItemInfo* GetItemInfo(int nRow, int nItem);
 	CString GetItemText(int nRow, int nItem);
@@ -99,6 +105,8 @@ public:
 	void SetRowBackColor(int nRow, Color clrBack);
 	void SetRowCheck(int nRow, int nCheck);
 	int  GetRowCheck(int nRow);
+	void SetRowData(int nRow, DWORD dwData);
+	DWORD GetRowData(int nRow);
 	void ClearItems();
 
 	BOOL PtInRow(CPoint point, GridRowInfo& rowInfo);
@@ -164,6 +172,11 @@ public:
 	BOOL				m_bSingleLine;		// 显示单行文字
 	BOOL				m_bTextWrap;		// 文字是否换行
 	BOOL				m_bShowColumnSeperator;	// 是否显示内容部分的列分隔线
+	BOOL				m_bSingleCheck;		// 行检查框是否单选模式
+
+	BOOL				m_bHoverHeaderCheck;	// 是否鼠标热点状态(标题行检查框)
+	int					m_nHeaderCheck;		// 标题行检查框状态(-1表示不显示)
+	CRect				m_rcHeaderCheck;	// 标题行检查框位置信息
 
 	int					m_nHoverRow;		// 当前鼠标移动的行索引
 	int					m_nDownRow;			// 当前点击的行索引
@@ -194,7 +207,7 @@ public:
 	DUI_IMAGE_ATTRIBUTE_DEFINE(HeaderSort);		// 定义标题行排序状态图片
 	DUI_IMAGE_ATTRIBUTE_DEFINE(ColumnSeperator);	// 定义列分隔线图片
 	DUI_IMAGE_ATTRIBUTE_DEFINE(Seperator);	// 定义行分隔线图片
-	DUI_IMAGE_ATTRIBUTE_DEFINE(CheckBox);	// 定义检查框图片
+	DUI_IMAGE_ATTRIBUTE_DEFINE_DPI(CheckBox);	// 定义检查框图片
 	DUI_DECLARE_ATTRIBUTES_BEGIN()
 		DUI_ENUM_ATTRIBUTE(_T("valign-header"), UINT, TRUE)
             DUI_ENUM_VALUE(_T("top"), VAlign_Top)
@@ -220,9 +233,10 @@ public:
 		DUI_COLOR_ATTRIBUTE(_T("crsep"), m_clrSeperator, FALSE)
 		DUI_COLOR_ATTRIBUTE(_T("crrowhover"), m_clrRowHover, FALSE)
 		DUI_COLOR_ATTRIBUTE(_T("crrowcurrent"), m_clrRowCurrent, FALSE)
-		DUI_INT_ATTRIBUTE(_T("row-height"), m_nRowHeight, FALSE)
-		DUI_INT_ATTRIBUTE(_T("header-height"), m_nHeaderHeight, FALSE)
-		DUI_INT_ATTRIBUTE(_T("left-pos"), m_nLeftPos, FALSE)
+		DUI_INT_ATTRIBUTE_DPI(_T("row-height"), m_nRowHeight, FALSE)
+		DUI_INT_ATTRIBUTE_DPI(_T("header-height"), m_nHeaderHeight, FALSE)
+		DUI_INT_ATTRIBUTE(_T("header-check"), m_nHeaderCheck, FALSE)
+		DUI_INT_ATTRIBUTE_DPI(_T("left-pos"), m_nLeftPos, FALSE)
 		DUI_BOOL_ATTRIBUTE(_T("wrap"), m_bTextWrap, FALSE)
 		DUI_BOOL_ATTRIBUTE(_T("down-row"), m_bEnableDownRow, FALSE)
 		DUI_INT_ATTRIBUTE(_T("bk-transparent"), m_nBkTransparent, FALSE)
@@ -230,5 +244,6 @@ public:
 		DUI_BOOL_ATTRIBUTE(_T("column-sep"), m_bShowColumnSeperator, TRUE)
 		DUI_BOOL_ATTRIBUTE(_T("modify-column-width"), m_bEnableModifyColumn, TRUE)
 		DUI_BOOL_ATTRIBUTE(_T("sort-click"), m_bSortOnClick, TRUE)
+		DUI_BOOL_ATTRIBUTE(_T("single-check"), m_bSingleCheck, TRUE)
     DUI_DECLARE_ATTRIBUTES_END()
 };
